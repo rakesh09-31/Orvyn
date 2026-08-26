@@ -1,0 +1,26 @@
+[
+  {
+    "id": "mem_1",
+    "category": "User Profile",
+    "key": "User Name",
+    "value": "Rakesh",
+    "timestamp": 1787723019.525358,
+    "pinned": true
+  },
+  {
+    "id": "mem_2",
+    "category": "Preferences",
+    "key": "Preferred AI Tone",
+    "value": "Concise, precise, and technically accurate",
+    "timestamp": 1787723019.525359,
+    "pinned": true
+  },
+  {
+    "id": "mem_3",
+    "category": "System Context",
+    "key": "Hardware Profile",
+    "value": "Local execution on RTX GPU with Ollama Qwen model",
+    "timestamp": 1787723019.5253594,
+    "pinned": false
+  }
+]
