@@ -26,6 +26,7 @@ from memory.store import memory_store
 from tools.executor import ToolExecutor
 from voice.audio_engine import VoiceEngine
 from backend.model_router import route_request
+from backend.streaming_cleaner import StreamingCodingFilter, StreamingThinkTagFilter
 
 try:
     from ollama import chat
@@ -989,27 +990,43 @@ def stream_response(message: str, intent: str, model_name: str = MODEL, include_
             },
         )
 
-        in_think = False
         yielded_any = False
-        for chunk in response:
-            if not chunk or not getattr(chunk, "message", None):
-                continue
-            c = chunk.message.content or ""
-            if not c:
-                continue
 
-            if "<think>" in c:
-                in_think = True
-                c = c.split("<think>", 1)[0]
-            if in_think:
-                if "</think>" in c:
-                    in_think = False
-                    c = c.split("</think>", 1)[1]
-                else:
+        if intent == "CODING":
+            fb_code = coding_fallback(message)
+            coding_filter = StreamingCodingFilter(fallback_code=fb_code)
+            for chunk in response:
+                if not chunk or not getattr(chunk, "message", None):
                     continue
+                c = chunk.message.content or ""
+                if not c:
+                    continue
+                filtered = coding_filter.process_chunk(c)
+                if filtered:
+                    yield filtered
+                    yielded_any = True
 
-            if c:
-                yield c
+            fl = coding_filter.flush()
+            if fl:
+                yield fl
+                yielded_any = True
+
+        else:
+            think_filter = StreamingThinkTagFilter()
+            for chunk in response:
+                if not chunk or not getattr(chunk, "message", None):
+                    continue
+                c = chunk.message.content or ""
+                if not c:
+                    continue
+                filtered = think_filter.process_chunk(c)
+                if filtered:
+                    yield filtered
+                    yielded_any = True
+
+            fl = think_filter.flush()
+            if fl:
+                yield fl
                 yielded_any = True
 
         if not yielded_any:

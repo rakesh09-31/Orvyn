@@ -29,6 +29,7 @@ from memory.store import MemoryStore
 from tools.executor import ToolExecutor
 from agents.orchestrator import AgentOrchestrator
 from voice.audio_engine import VoiceEngine
+from backend.streaming_cleaner import StreamingThinkTagFilter, StreamingCodingFilter
 
 
 class TestModelRouter(unittest.TestCase):
@@ -230,6 +231,64 @@ class TestVoiceEngine(unittest.TestCase):
         res = VoiceEngine.process_voice_command("Please clear chat now")
         self.assertTrue(res["is_command"])
         self.assertEqual(res["detected_command"], "NEW_CHAT")
+
+
+class TestStreamingCleaners(unittest.TestCase):
+    def test_think_tag_filter_chunk_splitting(self):
+        filter_obj = StreamingThinkTagFilter()
+        chunks = ["Here is ", "<th", "ink>internal reasoning", "</th", "ink>the answer."]
+        output = []
+        for c in chunks:
+            out = filter_obj.process_chunk(c)
+            if out:
+                output.append(out)
+        fl = filter_obj.flush()
+        if fl:
+            output.append(fl)
+        self.assertEqual("".join(output), "Here is the answer.")
+
+    def test_coding_filter_with_markdown_fence(self):
+        filter_obj = StreamingCodingFilter(fallback_code="")
+        chunks = [
+            "We are going to write a quicksort function.\n",
+            "Let's output the code:\n```python\n",
+            "def quicksort(arr):\n",
+            "    if len(arr) <= 1: return arr\n",
+            "    return quicksort([x for x in arr[1:] if x < arr[0]]) + [arr[0]] + quicksort([x for x in arr[1:] if x >= arr[0]])\n",
+            "```\n",
+            "Hope this helps you understand quicksort!"
+        ]
+        output = []
+        for c in chunks:
+            out = filter_obj.process_chunk(c)
+            if out:
+                output.append(out)
+        fl = filter_obj.flush()
+        if fl:
+            output.append(fl)
+        joined = "".join(output)
+        self.assertIn("def quicksort(arr):", joined)
+        self.assertNotIn("We are going to write", joined)
+        self.assertNotIn("Hope this helps", joined)
+
+    def test_coding_filter_raw_code_with_stop_marker(self):
+        filter_obj = StreamingCodingFilter(fallback_code="")
+        chunks = [
+            "def add(a, b):\n",
+            "    return a + b\n",
+            "\nNote: This function takes two arguments."
+        ]
+        output = []
+        for c in chunks:
+            out = filter_obj.process_chunk(c)
+            if out:
+                output.append(out)
+        fl = filter_obj.flush()
+        if fl:
+            output.append(fl)
+        joined = "".join(output)
+        self.assertEqual(joined.strip(), "def add(a, b):\n    return a + b")
+        self.assertNotIn("Note: This function", joined)
 
 
 if __name__ == "__main__":
