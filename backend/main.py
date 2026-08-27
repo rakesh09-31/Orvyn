@@ -235,6 +235,27 @@ def get_num_predict(intent: str) -> int:
 # TEXT CLEANERS & FALLBACKS
 # ============================================================
 
+GREETING_RESPONSE = "Hello! How can I help you?"
+
+GREETING_PATTERN = re.compile(
+    r"^\s*(?:"
+    r"(?:h+i+|h+e+l+l+o+|h+e+y+|h+l+o+|hola|howdy|greetings|good\s+(?:morning|afternoon|evening|day|night)|welcome|yo|sup)"
+    r"(?:\s+(?:there|orvyn|assistant|bot))?"
+    r"(?:[\s,!\.-]+(?:how\s+are\s+you(?:\s+doing)?|how\s+r\s+u|how\s+is\s+it\s+going|hows\s+it\s+going|what\'?s\s+up))?"
+    r"|"
+    r"(?:how\s+are\s+you(?:\s+doing)?|how\s+r\s+u|how\s+is\s+it\s+going|hows\s+it\s+going|what\'?s\s+up)"
+    r"(?:\s+(?:there|orvyn|assistant|bot))?"
+    r")\s*[!?.]*\s*$",
+    re.IGNORECASE,
+)
+
+
+def is_greeting(message: str) -> bool:
+    if not message or not isinstance(message, str):
+        return False
+    return bool(GREETING_PATTERN.match(message.strip()))
+
+
 def remove_thinking_tags(text: str) -> str:
     if not text:
         return ""
@@ -920,6 +941,9 @@ def call_ollama(message: str, intent: str, model_name: str = MODEL, include_memo
 
 
 def generate_response(message: str, intent: str, model_name: str = MODEL, include_memory: bool = True) -> str:
+    if is_greeting(message):
+        return GREETING_RESPONSE
+
     if intent == "FAST":
         fb = fast_fallback(message)
         if fb:
@@ -962,6 +986,10 @@ def generate_response(message: str, intent: str, model_name: str = MODEL, includ
 
 
 def stream_response(message: str, intent: str, model_name: str = MODEL, include_memory: bool = True) -> Generator[str, None, None]:
+    if is_greeting(message):
+        yield GREETING_RESPONSE
+        return
+
     if intent == "FAST":
         fb = fast_fallback(message)
         if fb:

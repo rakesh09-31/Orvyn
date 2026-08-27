@@ -24,6 +24,9 @@ from backend.main import (
     exam_fallback,
     is_valid_python,
     extract_code,
+    is_greeting,
+    generate_response,
+    stream_response,
 )
 from memory.store import MemoryStore
 from tools.executor import ToolExecutor
@@ -289,6 +292,56 @@ class TestStreamingCleaners(unittest.TestCase):
         joined = "".join(output)
         self.assertEqual(joined.strip(), "def add(a, b):\n    return a + b")
         self.assertNotIn("Note: This function", joined)
+
+
+class TestGreetingHandler(unittest.TestCase):
+    def test_positive_greetings(self):
+        positive_cases = [
+            "hlo",
+            "hello",
+            "hi",
+            "hey",
+            "good morning",
+            "good afternoon",
+            "good evening",
+            "hii",
+            "hiii",
+            "helloo",
+            "heyy",
+            "hloo",
+            "hello ORVYN",
+            "hi, how are you?",
+            "hey there!",
+            "how are you",
+        ]
+        for msg in positive_cases:
+            self.assertTrue(is_greeting(msg), f"Expected '{msg}' to be recognized as greeting")
+
+    def test_negative_greetings(self):
+        negative_cases = [
+            "Hi, can you explain paging?",
+            "Hello, what is RAM?",
+            "Hey, write Python code for prime numbers",
+            "What is RAM?",
+            "Write a Python function to check whether a number is prime",
+            "Explain paging for 15 marks",
+            "Design an AI assistant architecture",
+            "Tell me a short story about a student who builds an AI assistant",
+            "Explain paging briefly",
+        ]
+        for msg in negative_cases:
+            self.assertFalse(is_greeting(msg), f"Expected '{msg}' to NOT be recognized as greeting")
+
+    def test_greeting_generate_response(self):
+        resp = generate_response("hlo", "GENERAL")
+        self.assertEqual(resp, "Hello! How can I help you?")
+
+        resp2 = generate_response("hello", "GENERAL")
+        self.assertEqual(resp2, "Hello! How can I help you?")
+
+    def test_greeting_stream_response(self):
+        chunks = list(stream_response("hlo", "GENERAL"))
+        self.assertEqual(chunks, ["Hello! How can I help you?"])
 
 
 if __name__ == "__main__":
